@@ -1,114 +1,320 @@
-use std::io;//bagulho para depois
-use eframe::egui;//interface
+use std::cmp::Reverse;
+use std::collections::BinaryHeap;
+use eframe::egui;
 
-#[derive(Clone)]
-struct Arest{//peso do bagulho e daonde atéaonde
+#[derive(Clone, Debug)]
+struct Arest {
     peso: u32,
     dcamin: usize,
 }
-#[derive(Clone)]
-struct Vertic{
-    arestu:Vec<Arest>,
-    grau: u32,   
-    num_nome: u32,    
-    cha_nome: char,   
+
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+struct Vertic {
+    arestu: Vec<Arest>,
+    grau: u32,
+    num_nome: u32,
+    cha_nome: char,
 }
-#[derive(Clone)]
-struct Grap {// Grafo(Vertice, Arestas)
-    verticu:Vec<Vertic>,
+
+#[derive(Clone, Debug)]
+struct Grap {
+    verticu: Vec<Vertic>,
 }
+
+//************************************************************************************
+// Estrutura com os resultados calculados pelo Algoritmo de Dijkstra
+//************************************************************************************
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+struct ResultadoDijkstra {
+    origem: usize,
+    destino: usize,
+    distancias: Vec<u32>,
+    pais: Vec<Option<usize>>,
+    caminho: Vec<usize>,                  // Sequência de nós de origem até destino
+    arestas_caminho: Vec<(usize, usize)>, // Arestas específicas do menor caminho
+    arestas_subgrafo: Vec<(usize, usize)>,// Todas as arestas exploradas na árvore de caminhos mínimos
+    custo_total: Option<u32>,
+}
+
+// Algoritmo de Dijkstra
+fn calcular_dijkstra(grafu: &Grap, origem: usize, destino: usize) -> ResultadoDijkstra {
+    let n = grafu.verticu.len();
+    if origem >= n {
+        return ResultadoDijkstra {
+            origem,
+            destino,
+            distancias: vec![],
+            pais: vec![],
+            caminho: vec![],
+            arestas_caminho: vec![],
+            arestas_subgrafo: vec![],
+            custo_total: None,
+        };
+    }
+
+    let mut distancias = vec![u32::MAX; n];
+    let mut pais: Vec<Option<usize>> = vec![None; n];
+    let mut fila: BinaryHeap<(Reverse<u32>, usize)> = BinaryHeap::new();
+
+    distancias[origem] = 0;
+    fila.push((Reverse(0), origem));
+
+    while let Some((Reverse(d), u)) = fila.pop() {
+        if d > distancias[u] {
+            continue;
+        }
+
+        if let Some(vertice) = grafu.verticu.get(u) {
+            for aresta in &vertice.arestu {
+                let v = aresta.dcamin;
+                if v >= n {
+                    continue;
+                }
+                let novo_custo = d.saturating_add(aresta.peso);
+                if novo_custo < distancias[v] {
+                    distancias[v] = novo_custo;
+                    pais[v] = Some(u);
+                    fila.push((Reverse(novo_custo), v));
+                }
+            }
+        }
+    }
+
+    // Coleta todas as arestas que compõem a árvore gerada pelo Dijkstra (subgrafo completo)
+    let mut arestas_subgrafo = Vec::new();
+    for (v, &p) in pais.iter().enumerate() {
+        if let Some(u) = p {
+            arestas_subgrafo.push((u, v));
+        }
+    }
+
+    // Reconstrói o caminho específico até o destino
+    let mut caminho = Vec::new();
+    let mut arestas_caminho = Vec::new();
+    let custo_total = if destino < n && distancias[destino] != u32::MAX {
+        let mut curr = destino;
+        caminho.push(curr);
+        while curr != origem {
+            if let Some(ant) = pais[curr] {
+                arestas_caminho.push((ant, curr));
+                curr = ant;
+                caminho.push(curr);
+            } else {
+                break;
+            }
+        }
+        caminho.reverse();
+        arestas_caminho.reverse();
+        Some(distancias[destino])
+    } else if origem == destino && destino < n {
+        caminho.push(origem);
+        Some(0)
+    } else {
+        None
+    };
+
+    ResultadoDijkstra {
+        origem,
+        destino,
+        distancias,
+        pais,
+        caminho,
+        arestas_caminho,
+        arestas_subgrafo,
+        custo_total,
+    }
+}
+
+// Retorna o subgrafo construído pelo Dijkstra
+#[allow(dead_code)]
+fn subgrafo_dijk(grafu: &Grap, origem: usize, destino: usize) -> Grap {
+    let res = calcular_dijkstra(grafu, origem, destino);
+    let n = grafu.verticu.len();
+    let mut sub_verticu = Vec::with_capacity(n);
+
+    for vert in &grafu.verticu {
+        sub_verticu.push(Vertic {
+            arestu: Vec::new(),
+            grau: 0,
+            num_nome: vert.num_nome,
+            cha_nome: vert.cha_nome,
+        });
+    }
+
+    for &(u, v) in &res.arestas_subgrafo {
+        if let Some(vert_orig) = grafu.verticu.get(u) {
+            if let Some(aresta_orig) = vert_orig.arestu.iter().find(|a| a.dcamin == v) {
+                sub_verticu[u].arestu.push(aresta_orig.clone());
+                sub_verticu[u].grau += 1;
+            }
+        }
+    }
+
+    Grap { verticu: sub_verticu }
+}
+
+// Retorna o vetor com a sequência de índices do caminho mínimo
+#[allow(dead_code)]
+fn caminho_dijk(grafu: &Grap, origem: usize, destino: usize) -> Vec<usize> {
+    let res = calcular_dijkstra(grafu, origem, destino);
+    res.caminho
+}
+
+//************************************************************************************
+// Interface Gráfica com egui / eframe
 //************************************************************************************
 struct Aplicacao {
     grafo: Grap,
+    posicoes: Vec<egui::Pos2>,
+    arrastando: Option<usize>,
+    no_origem: usize,
+    no_destino: usize,
+    resultado_dijkstra: Option<ResultadoDijkstra>,
+    mostrar_subgrafo_completo: bool,
+}
+
+impl Aplicacao {
+    fn new(grafo: Grap) -> Self {
+        let n = grafo.verticu.len();
+        let mut posicoes = vec![
+            egui::pos2(160.0, 180.0), // A
+            egui::pos2(380.0, 110.0), // B
+            egui::pos2(600.0, 180.0), // C
+            egui::pos2(260.0, 400.0), // D
+            egui::pos2(520.0, 400.0), // E
+        ];
+
+        while posicoes.len() < n {
+            let idx = posicoes.len();
+            posicoes.push(egui::pos2(150.0 + (idx as f32) * 80.0, 220.0));
+        }
+
+        Self {
+            grafo,
+            posicoes,
+            arrastando: None,
+            no_origem: 0,
+            no_destino: 4.min(n.saturating_sub(1)),
+            resultado_dijkstra: None,
+            mostrar_subgrafo_completo: false,
+        }
+    }
 }
 
 impl eframe::App for Aplicacao {
-    fn ui(
-        &mut self,
-        ui: &mut egui::Ui,
-        _frame: &mut eframe::Frame,
-    ) {
-        let id_posicoes = egui::Id::NULL.with("grafo_posicoes");
-        let id_arrastando = egui::Id::NULL.with("grafo_arrastando");
-        let id_origem = egui::Id::NULL.with("grafo_origem");
-        let id_destino = egui::Id::NULL.with("grafo_destino");
-
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let n = self.grafo.verticu.len();
 
-        // Recupera ou inicializa as posições dos vértices
-        let mut posicoes: Vec<egui::Pos2> = ui.ctx().data_mut(|d| {
-            d.get_temp(id_posicoes).unwrap_or_else(|| {
-                // Layout padrão inicial (5 nós)
-                vec![
-                    egui::pos2(150.0, 160.0), // A
-                    egui::pos2(350.0, 100.0), // B
-                    egui::pos2(550.0, 160.0), // C
-                    egui::pos2(230.0, 360.0), // D
-                    egui::pos2(470.0, 360.0), // E
-                ]
-            })
-        });
-
-        // Garante que o vetor tenha posições suficientes caso o grafo cresça
-        while posicoes.len() < n {
-            let idx = posicoes.len();
-            posicoes.push(egui::pos2(150.0 + (idx as f32) * 80.0, 200.0));
-        }
-
-        let mut arrastando: Option<usize> = ui.ctx().data_mut(|d| d.get_temp(id_arrastando));
-        let mut no_origem: usize = ui.ctx().data_mut(|d| d.get_temp(id_origem).unwrap_or(0));
-        let mut no_destino: usize = ui.ctx().data_mut(|d| d.get_temp(id_destino).unwrap_or(4.min(n.saturating_sub(1))));
-
-        // Barra Superior: Cabeçalho e Seleção de Nós
-        ui.horizontal(|ui| {
+        // 1. Barra Superior: Controles
+        ui.horizontal_wrapped(|ui| {
             ui.heading("🌐 Visualizador de Grafos");
             ui.separator();
 
             ui.label(egui::RichText::new("Origem:").strong());
             for (i, v) in self.grafo.verticu.iter().enumerate() {
-                let selecionado = no_origem == i;
+                let selecionado = self.no_origem == i;
                 if ui.selectable_label(selecionado, v.cha_nome.to_string()).clicked() {
-                    no_origem = i;
+                    self.no_origem = i;
+                    // Recalcula se o Dijkstra já estiver ativo
+                    if self.resultado_dijkstra.is_some() {
+                        self.resultado_dijkstra = Some(calcular_dijkstra(&self.grafo, self.no_origem, self.no_destino));
+                    }
                 }
             }
 
             ui.separator();
             ui.label(egui::RichText::new("Destino:").strong());
             for (i, v) in self.grafo.verticu.iter().enumerate() {
-                let selecionado = no_destino == i;
+                let selecionado = self.no_destino == i;
                 if ui.selectable_label(selecionado, v.cha_nome.to_string()).clicked() {
-                    no_destino = i;
+                    self.no_destino = i;
+                    // Recalcula se o Dijkstra já estiver ativo
+                    if self.resultado_dijkstra.is_some() {
+                        self.resultado_dijkstra = Some(calcular_dijkstra(&self.grafo, self.no_origem, self.no_destino));
+                    }
                 }
             }
 
             ui.separator();
-            if ui.button("↺ Resetar Layout").clicked() {
-                posicoes = vec![
-                    egui::pos2(150.0, 160.0),
-                    egui::pos2(350.0, 100.0),
-                    egui::pos2(550.0, 160.0),
-                    egui::pos2(230.0, 360.0),
-                    egui::pos2(470.0, 360.0),
+
+            // Botão Principal: Calcular Caminho
+            let btn_calc = egui::Button::new(
+                egui::RichText::new("⚡ Calcular Caminho")
+                    .color(egui::Color32::BLACK)
+                    .strong(),
+            )
+            .fill(egui::Color32::from_rgb(46, 204, 113));
+
+            if ui.add(btn_calc).clicked() {
+                self.resultado_dijkstra = Some(calcular_dijkstra(&self.grafo, self.no_origem, self.no_destino));
+            }
+
+            if self.resultado_dijkstra.is_some() {
+                if ui.button("✕ Limpar").clicked() {
+                    self.resultado_dijkstra = None;
+                }
+
+                ui.checkbox(
+                    &mut self.mostrar_subgrafo_completo,
+                    "Árvore Dijkstra completa",
+                );
+            }
+
+            ui.separator();
+            if ui.button("↺ Resetar Nós").clicked() {
+                self.posicoes = vec![
+                    egui::pos2(160.0, 180.0),
+                    egui::pos2(380.0, 110.0),
+                    egui::pos2(600.0, 180.0),
+                    egui::pos2(260.0, 400.0),
+                    egui::pos2(520.0, 400.0),
                 ];
             }
         });
 
+        // 2. Banner de Status / Resultado
+        ui.add_space(4.0);
         ui.horizontal(|ui| {
-            ui.label(
-                egui::RichText::new("💡 Dica: Arraste os nós para mover. Verde = Origem | Vermelho = Destino")
-                    .small()
-                    .color(egui::Color32::from_rgb(170, 170, 180)),
-            );
+            if let Some(res) = &self.resultado_dijkstra {
+                if let Some(custo) = res.custo_total {
+                    let rota_str = res
+                        .caminho
+                        .iter()
+                        .filter_map(|&idx| self.grafo.verticu.get(idx).map(|v| v.cha_nome.to_string()))
+                        .collect::<Vec<_>>()
+                        .join(" → ");
+
+                    ui.label(
+                        egui::RichText::new(format!("✓ Caminho Mínimo: {} | Custo Total: {}", rota_str, custo))
+                            .strong()
+                            .color(egui::Color32::from_rgb(46, 204, 113)),
+                    );
+                } else {
+                    ui.label(
+                        egui::RichText::new("⚠ Não existe caminho alcançável entre a Origem e o Destino!")
+                            .strong()
+                            .color(egui::Color32::from_rgb(231, 76, 60)),
+                    );
+                }
+            } else {
+                ui.label(
+                    egui::RichText::new("💡 Clique em \"Calcular Caminho\" para destacar o subgrafo mínimo em verde.")
+                        .small()
+                        .color(egui::Color32::from_rgb(170, 175, 190)),
+                );
+            }
         });
 
         ui.separator();
 
-        // Canvas do Grafo
+        // 3. Área do Canvas
         let area_disponivel = ui.available_size_before_wrap();
         let (rect, resposta) = ui.allocate_exact_size(area_disponivel, egui::Sense::click_and_drag());
         let painter = ui.painter_at(rect);
 
-        // Fundo escuro com cantos arredondados
+        // Fundo escuro elegante
         painter.rect(
             rect,
             12.0,
@@ -119,65 +325,118 @@ impl eframe::App for Aplicacao {
 
         let raio_no = 26.0;
 
-        // Interação do Mouse: Arrastar nós
+        // Movimentação dos nós com o mouse
         if let Some(pos_mouse) = resposta.hover_pos() {
             if resposta.drag_started() {
-                for (i, &p) in posicoes.iter().enumerate().take(n) {
+                for (i, &p) in self.posicoes.iter().enumerate().take(n) {
                     if p.distance(pos_mouse) <= raio_no {
-                        arrastando = Some(i);
+                        self.arrastando = Some(i);
                         break;
                     }
                 }
             }
 
             if resposta.dragged() {
-                if let Some(idx) = arrastando {
-                    if idx < posicoes.len() {
-                        let margem = raio_no + 5.0;
+                if let Some(idx) = self.arrastando {
+                    if idx < self.posicoes.len() {
+                        let margem = raio_no + 8.0;
                         let novo_x = pos_mouse.x.clamp(rect.min.x + margem, rect.max.x - margem);
                         let novo_y = pos_mouse.y.clamp(rect.min.y + margem, rect.max.y - margem);
-                        posicoes[idx] = egui::pos2(novo_x, novo_y);
+                        self.posicoes[idx] = egui::pos2(novo_x, novo_y);
                     }
                 }
             }
         }
 
         if resposta.drag_stopped() {
-            arrastando = None;
+            self.arrastando = None;
         }
 
-        // 1. Desenha as Arestas
+        // Helpers de destaque
+        let esta_no_caminho = |u: usize, v: usize, res: &Option<ResultadoDijkstra>| -> bool {
+            if let Some(r) = res {
+                r.arestas_caminho.iter().any(|&(a, b)| (a == u && b == v) || (a == v && b == u))
+            } else {
+                false
+            }
+        };
+
+        let esta_no_subgrafo = |u: usize, v: usize, res: &Option<ResultadoDijkstra>| -> bool {
+            if let Some(r) = res {
+                r.arestas_subgrafo.iter().any(|&(a, b)| (a == u && b == v) || (a == v && b == u))
+            } else {
+                false
+            }
+        };
+
+        // 4. Desenha as Arestas do Grafo
         for (origem, vertice) in self.grafo.verticu.iter().enumerate() {
             for aresta in &vertice.arestu {
                 let destino = aresta.dcamin;
-                if destino >= posicoes.len() || origem >= posicoes.len() {
+                if destino >= self.posicoes.len() || origem >= self.posicoes.len() {
                     continue;
                 }
 
-                // Se for bidirecional, desenha apenas uma vez para não sobrepor o texto do peso
+                // Evita desenhar duplicado arestas bidirecionais
                 if origem > destino && vertice_tem_aresta(&self.grafo, destino, origem) {
                     continue;
                 }
 
-                let inicio = posicoes[origem];
-                let fim = posicoes[destino];
+                let inicio = self.posicoes[origem];
+                let fim = self.posicoes[destino];
 
-                // Linha da aresta
-                painter.line_segment(
-                    [inicio, fim],
-                    egui::Stroke::new(2.5, egui::Color32::from_rgb(140, 150, 175)),
-                );
+                let no_caminho = esta_no_caminho(origem, destino, &self.resultado_dijkstra);
+                let no_subgrafo = self.mostrar_subgrafo_completo && esta_no_subgrafo(origem, destino, &self.resultado_dijkstra);
 
-                // Badge arredondado com o peso no meio da aresta
+                if no_caminho {
+                    // Efeito de Brilho / Glow Neon Verde
+                    painter.line_segment(
+                        [inicio, fim],
+                        egui::Stroke::new(8.0, egui::Color32::from_rgba_premultiplied(46, 204, 113, 60)),
+                    );
+                    // Linha Verde Principal do Caminho
+                    painter.line_segment(
+                        [inicio, fim],
+                        egui::Stroke::new(4.5, egui::Color32::from_rgb(46, 204, 113)),
+                    );
+                } else if no_subgrafo {
+                    // Linha Verde Suave para outras arestas da árvore Dijkstra
+                    painter.line_segment(
+                        [inicio, fim],
+                        egui::Stroke::new(3.0, egui::Color32::from_rgb(39, 174, 96)),
+                    );
+                } else {
+                    // Linha Normal Cinza
+                    painter.line_segment(
+                        [inicio, fim],
+                        egui::Stroke::new(2.2, egui::Color32::from_rgb(110, 120, 145)),
+                    );
+                }
+
+                // Badge de Peso no meio da aresta
                 let meio = egui::pos2((inicio.x + fim.x) * 0.5, (inicio.y + fim.y) * 0.5);
-                let badge_size = egui::vec2(22.0, 18.0);
+                let badge_size = egui::vec2(24.0, 20.0);
                 let badge_rect = egui::Rect::from_center_size(meio, badge_size);
 
-                painter.rect_filled(badge_rect, 4.0, egui::Color32::from_rgb(30, 34, 45));
+                let (cor_fundo_badge, cor_borda_badge, cor_texto_badge) = if no_caminho {
+                    (
+                        egui::Color32::from_rgb(20, 50, 30),
+                        egui::Color32::from_rgb(46, 204, 113),
+                        egui::Color32::from_rgb(255, 255, 255),
+                    )
+                } else {
+                    (
+                        egui::Color32::from_rgb(30, 34, 45),
+                        egui::Color32::from_rgb(70, 80, 105),
+                        egui::Color32::from_rgb(255, 215, 64),
+                    )
+                };
+
+                painter.rect_filled(badge_rect, 5.0, cor_fundo_badge);
                 painter.rect_stroke(
                     badge_rect,
-                    4.0,
-                    egui::Stroke::new(1.0, egui::Color32::from_rgb(70, 80, 105)),
+                    5.0,
+                    egui::Stroke::new(1.2, cor_borda_badge),
                     egui::StrokeKind::Inside,
                 );
 
@@ -186,25 +445,35 @@ impl eframe::App for Aplicacao {
                     egui::Align2::CENTER_CENTER,
                     aresta.peso.to_string(),
                     egui::FontId::proportional(13.0),
-                    egui::Color32::from_rgb(255, 215, 64),
+                    cor_texto_badge,
                 );
             }
         }
 
-        // 2. Desenha os Vértices
-        for (i, vertice) in self.grafo.verticu.iter().enumerate().take(posicoes.len()) {
-            let pos = posicoes[i];
+        // 5. Desenha os Vértices
+        for (i, vertice) in self.grafo.verticu.iter().enumerate().take(self.posicoes.len()) {
+            let pos = self.posicoes[i];
 
-            // Cores diferenciadas por estado
-            let (cor_preenchimento, cor_borda) = if i == no_origem {
+            let faz_parte_caminho = self
+                .resultado_dijkstra
+                .as_ref()
+                .map(|r| r.caminho.contains(&i))
+                .unwrap_or(false);
+
+            let (cor_preenchimento, cor_borda) = if i == self.no_origem {
                 (
                     egui::Color32::from_rgb(39, 174, 96), // Verde Origem
                     egui::Color32::from_rgb(46, 204, 113),
                 )
-            } else if i == no_destino {
+            } else if i == self.no_destino {
                 (
                     egui::Color32::from_rgb(192, 57, 43), // Vermelho Destino
                     egui::Color32::from_rgb(231, 76, 60),
+                )
+            } else if faz_parte_caminho {
+                (
+                    egui::Color32::from_rgb(26, 120, 75), // Verde Nó do Caminho
+                    egui::Color32::from_rgb(46, 204, 113),
                 )
             } else {
                 (
@@ -213,12 +482,12 @@ impl eframe::App for Aplicacao {
                 )
             };
 
-            // Glow sutil no nó de origem e destino
-            if i == no_origem || i == no_destino {
+            // Glow externo para nós em destaque
+            if i == self.no_origem || i == self.no_destino || faz_parte_caminho {
                 painter.circle_stroke(
                     pos,
-                    raio_no + 4.0,
-                    egui::Stroke::new(2.0, cor_borda.gamma_multiply(0.4)),
+                    raio_no + 4.5,
+                    egui::Stroke::new(2.5, cor_borda.gamma_multiply(0.5)),
                 );
             }
 
@@ -235,27 +504,37 @@ impl eframe::App for Aplicacao {
                 egui::Color32::WHITE,
             );
 
-            // Subtexto com Grau do Vértice abaixo da bolinha
+            // Informações extras abaixo da bolinha (distância calculada e grau)
+            let texto_info = if let Some(res) = &self.resultado_dijkstra {
+                if let Some(&d) = res.distancias.get(i) {
+                    if d == u32::MAX {
+                        format!("d: ∞ | g: {}", vertice.grau)
+                    } else {
+                        format!("d: {} | g: {}", d, vertice.grau)
+                    }
+                } else {
+                    format!("grau: {}", vertice.grau)
+                }
+            } else {
+                format!("grau: {}", vertice.grau)
+            };
+
             painter.text(
-                pos + egui::vec2(0.0, raio_no + 10.0),
+                pos + egui::vec2(0.0, raio_no + 11.0),
                 egui::Align2::CENTER_CENTER,
-                format!("grau: {}", vertice.grau),
+                texto_info,
                 egui::FontId::proportional(11.0),
-                egui::Color32::from_rgb(160, 170, 190),
+                if faz_parte_caminho {
+                    egui::Color32::from_rgb(46, 204, 113)
+                } else {
+                    egui::Color32::from_rgb(160, 170, 190)
+                },
             );
         }
-
-        // Salva estado interativo
-        ui.ctx().data_mut(|d| {
-            d.insert_temp(id_posicoes, posicoes);
-            d.insert_temp(id_arrastando, arrastando);
-            d.insert_temp(id_origem, no_origem);
-            d.insert_temp(id_destino, no_destino);
-        });
     }
 }
 
-// Função auxiliar para evitar desenhar arestas bidirecionais duas vezes
+// Função auxiliar para verificar existência de aresta
 fn vertice_tem_aresta(grafo: &Grap, de: usize, para: usize) -> bool {
     if let Some(v) = grafo.verticu.get(de) {
         v.arestu.iter().any(|a| a.dcamin == para)
@@ -263,118 +542,72 @@ fn vertice_tem_aresta(grafo: &Grap, de: usize, para: usize) -> bool {
         false
     }
 }
+
 //************************************************************************************
-fn main() {
-    println!(""); 
-    println!("Tá compilando porra");//nao tenho comentários
+fn main() -> eframe::Result {
+    println!("\nIniciando Visualizador de Grafos com Dijkstra...");
 
-    let mut grafu = Grap{// A0 B1 C2 D3 E4
+    let grafu = Grap {
         verticu: vec![
-            Vertic{
-                arestu:vec![
-                    Arest{
-                        peso:4,
-                        dcamin:1,
-                    },
-                    Arest{
-                        peso:3,
-                        dcamin:2,
-                    },
+            Vertic {
+                arestu: vec![
+                    Arest { peso: 4, dcamin: 1 },
+                    Arest { peso: 3, dcamin: 2 },
                 ],
-                grau:2,
-                num_nome:0,
-                cha_nome:'A',
+                grau: 2,
+                num_nome: 0,
+                cha_nome: 'A',
             },
-
-            Vertic{
-                arestu:vec![
-                    Arest{
-                        peso:4,
-                        dcamin:0,
-                    },
-                    Arest{
-                        peso:5,
-                        dcamin:2,
-                    },
-                    Arest{
-                        peso:2,
-                        dcamin:3,
-                    },
-
+            Vertic {
+                arestu: vec![
+                    Arest { peso: 4, dcamin: 0 },
+                    Arest { peso: 5, dcamin: 2 },
+                    Arest { peso: 2, dcamin: 3 },
                 ],
-                grau:3,
-                num_nome:1,
-                cha_nome:'B',
+                grau: 3,
+                num_nome: 1,
+                cha_nome: 'B',
             },
-
-            Vertic{
-                arestu:vec![
-                    Arest{
-                        peso:3,
-                        dcamin:0,
-                    },
-                    Arest{
-                        peso:5,
-                        dcamin:1,
-                    },
-                    Arest{
-                        peso:1,
-                        dcamin:3,
-                    },
-                    Arest{
-                        peso:3,
-                        dcamin:4,
-                    },
+            Vertic {
+                arestu: vec![
+                    Arest { peso: 3, dcamin: 0 },
+                    Arest { peso: 5, dcamin: 1 },
+                    Arest { peso: 1, dcamin: 3 },
+                    Arest { peso: 3, dcamin: 4 },
                 ],
-                grau:4,
-                num_nome:2,
-                cha_nome:'C',
+                grau: 4,
+                num_nome: 2,
+                cha_nome: 'C',
             },
-
-            Vertic{
-                arestu:vec![
-                    Arest{
-                        peso:2,
-                        dcamin:1,
-                    },
-                    Arest{
-                        peso:1,
-                        dcamin:2,
-                    },
-                    Arest{
-                        peso:4,
-                        dcamin:4,
-                    },
+            Vertic {
+                arestu: vec![
+                    Arest { peso: 2, dcamin: 1 },
+                    Arest { peso: 1, dcamin: 2 },
+                    Arest { peso: 4, dcamin: 4 },
                 ],
-                grau:3,
-                num_nome:3,
-                cha_nome:'D',
+                grau: 3,
+                num_nome: 3,
+                cha_nome: 'D',
             },
-
-            Vertic{
-                arestu:vec![
-                    Arest{
-                        peso:3,
-                        dcamin:2,
-                    },
-                    Arest{
-                        peso:4,
-                        dcamin:3,
-                    }
+            Vertic {
+                arestu: vec![
+                    Arest { peso: 3, dcamin: 2 },
+                    Arest { peso: 4, dcamin: 3 },
                 ],
-                grau:2,
-                num_nome:4,
-                cha_nome:'E',
+                grau: 2,
+                num_nome: 4,
+                cha_nome: 'E',
             },
         ],
     };
-//final das structs
-    //printar_grap_em_linha(&grafu);
-    let aoi = ver_grap_bonitinho(&grafu);    
+
+    ver_grap_bonitinho(&grafu)
 }
+
 //************************************************************************************
-fn printar_grap_em_linha(grafu: &Grap){
-        for vertice in &grafu.verticu {
+#[allow(dead_code)]
+fn printar_grap_em_linha(grafu: &Grap) {
+    for vertice in &grafu.verticu {
         println!("\nVertice: {}", vertice.cha_nome);
         for aresta in &vertice.arestu {
             let destino = &grafu.verticu[aresta.dcamin];
@@ -382,32 +615,22 @@ fn printar_grap_em_linha(grafu: &Grap){
         }
     }
 }
+
 //************************************************************************************
-fn ver_grap_bonitinho(grafo: &Grap) -> eframe::Result{
-        let opcoes = eframe::NativeOptions {
+fn ver_grap_bonitinho(grafo: &Grap) -> eframe::Result {
+    let opcoes = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([700.0, 500.0]),
+            .with_inner_size([820.0, 620.0])
+            .with_min_inner_size([650.0, 480.0])
+            .with_title("Visualizador de Grafos - Algoritmo de Dijkstra"),
         ..Default::default()
     };
+
     eframe::run_native(
         "Visualizador de Grafos",
         opcoes,
         Box::new(|_cc| {
-            Ok(Box::new(Aplicacao {
-                grafo:grafo.clone(),
-            }))
+            Ok(Box::new(Aplicacao::new(grafo.clone())))
         }),
     )
 }
-//************************************************************************************
-// preciso de uma fila pra dizer qual é o menor valor pro dijkstra, uma fila de prioridade, um array serve 
-//fns inserir(colocar coisas no array), remover menor(tirar o menor valor da fila das prioridades), 
-//editar(mudar valores do array)
-
-//fn subgrafo_dijk(grafu:&Grap, origem:usize, destino:usize) -> Grap {
-//
-//}
-//
-//fn caminho_dijk(grafu:&Grap, origem:usize, destino:usize) -> Vec<usize>{
-//
-//}
