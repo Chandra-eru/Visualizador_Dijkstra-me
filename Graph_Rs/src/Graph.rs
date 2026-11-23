@@ -2,15 +2,15 @@ use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use eframe::egui;
 //************************************************************************************
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug)]//pq é tão divertidinho programar nessa linguagem 
 struct Arest {
     peso: u32,
     dcamin: usize,
 }
 //************************************************************************************
 #[allow(dead_code)]
-#[derive(Clone, Debug)]
-struct Vertic {
+#[derive(Clone, Debug)]// vertices para coisar aaaa
+struct Vertic { //será que eu consigo usar rust para programar arduino 
     arestu: Vec<Arest>,
     grau: u32,
     num_nome: u32,
@@ -18,7 +18,7 @@ struct Vertic {
 }
 //************************************************************************************
 #[derive(Clone, Debug)]
-struct Grap {
+struct Grap {  // a esse ponto meus comentários são mais devaneios doq qualquer coisa 
     verticu: Vec<Vertic>,
 }
 //************************************************************************************
@@ -37,7 +37,8 @@ struct ResultadoDijkstra {
     custo_total: Option<u32>,
 }
 
-// Algoritmo de Dijkstra
+// Isso TEORICAMENTE serve para fazer o dijkstra, foi o Agy q inscreveu ent tô meio assim
+// tô quase apagando o treco para escrever mim mesmo 
 fn calcular_dijkstra(grafu: &Grap, origem: usize, destino: usize) -> ResultadoDijkstra {
     let n = grafu.verticu.len();
     if origem >= n {
@@ -173,7 +174,7 @@ struct Aplicacao {
     mostrar_subgrafo_completo: bool,
 }
 //************************************************************************************
-impl Aplicacao {
+impl Aplicacao {//olhar linha 555 instruções sobre as  vertices 
     fn new(grafo: Grap) -> Self {
         let n = grafo.verticu.len();
         let mut posicoes = vec![
@@ -244,7 +245,7 @@ impl eframe::App for Aplicacao {
 
             // Botão Principal: Calcular Caminho
             let btn_calc = egui::Button::new(
-                egui::RichText::new("⚡ Calcular Caminho")
+                egui::RichText::new(" 📍 Calcular Caminho")
                     .color(egui::Color32::BLACK)
                     .strong(),
             )
@@ -267,7 +268,7 @@ impl eframe::App for Aplicacao {
 
             ui.separator();
             if ui.button("↺ Resetar Nós").clicked() {
-                self.posicoes = vec![
+                self.posicoes = vec![ //para adicionar coisas ver linha 555 
                     egui::pos2(160.0, 180.0), // A (0)
                     egui::pos2(380.0, 110.0), // B (1)
                     egui::pos2(600.0, 180.0), // C (2)
@@ -550,18 +551,19 @@ fn vertice_tem_aresta(grafo: &Grap, de: usize, para: usize) -> bool {
         false
     }
 }
-
 //************************************************************************************
-fn main(){//o claude mexeu e tirou meu lindos comentários, olha que lindo
+fn main(){//o claude mexeu e tirou meu lindos comentários, minhas palavras de voltamra agora que estou revisando código 
             //daq pra baixo a magia acontece
     println!("\ntá compilando caralhooo!!!");
-
+/*  ó para adicionar mais vertices tem que mudar as coisaa 
+    na linha 177 e 270 lembrar de atualizar ou mandar o agy atualizar
+*/
     let grafu = Grap {//A0,B1,C2,D3,E4,F5,G6,H7,I8,J9,
         verticu: vec![
             Vertic { //B, C, F, I
                 arestu: vec![
                     Arest { peso: 4, dcamin: 1 }, 
-                    Arest { peso: 3, dcamin: 2 }, 
+                    Arest { peso: 5, dcamin: 2 }, 
                     Arest { peso: 6, dcamin: 5 }, 
                     Arest { peso: 7, dcamin: 8 }, 
                 ],
@@ -572,8 +574,8 @@ fn main(){//o claude mexeu e tirou meu lindos comentários, olha que lindo
             Vertic { // A,C,D,I,J
                 arestu: vec![
                     Arest { peso: 4, dcamin: 0 }, 
-                    Arest { peso: 5, dcamin: 2 }, 
-                    Arest { peso: 2, dcamin: 3 }, 
+                    Arest { peso: 7, dcamin: 2 }, 
+                    Arest { peso: 3, dcamin: 3 }, 
                     Arest { peso: 5, dcamin: 8 }, 
                     Arest { peso: 6, dcamin: 9 }, 
                 ],
@@ -585,7 +587,7 @@ fn main(){//o claude mexeu e tirou meu lindos comentários, olha que lindo
                 arestu: vec![
                     Arest { peso: 3, dcamin: 0 },
                     Arest { peso: 5, dcamin: 1 },
-                    Arest { peso: 1, dcamin: 3 },
+                    Arest { peso: 6, dcamin: 3 },
                     Arest { peso: 3, dcamin: 4 },
                     Arest { peso: 4, dcamin: 6 },
                     Arest { peso: 8, dcamin: 9 },
@@ -597,7 +599,7 @@ fn main(){//o claude mexeu e tirou meu lindos comentários, olha que lindo
             Vertic { // B,C,E,F,H 
                 arestu: vec![
                     Arest { peso: 2, dcamin: 1 },
-                    Arest { peso: 1, dcamin: 2 },
+                    Arest { peso: 5, dcamin: 2 },
                     Arest { peso: 4, dcamin: 4 },
                     Arest { peso: 3, dcamin: 5 },
                     Arest { peso: 5, dcamin: 7 },
@@ -610,74 +612,75 @@ fn main(){//o claude mexeu e tirou meu lindos comentários, olha que lindo
                 arestu: vec![
                     Arest { peso: 3, dcamin: 2 }, 
                     Arest { peso: 4, dcamin: 3 }, 
-                    Arest { peso: 2, dcamin: 6 }, 
+                    Arest { peso: 5, dcamin: 6 }, 
                     Arest { peso: 6, dcamin: 7 }, 
                 ],
                 grau: 4,
                 num_nome: 4,
                 cha_nome: 'E',
             },
-            Vertic { // 5 = F
+            Vertic { // A, D, H, I
                 arestu: vec![
-                    Arest { peso: 6, dcamin: 0 }, // F -> A
-                    Arest { peso: 3, dcamin: 3 }, // F -> D
-                    Arest { peso: 4, dcamin: 7 }, // F -> H
-                    Arest { peso: 9, dcamin: 8 }, // F -> I
+                    Arest { peso: 6, dcamin: 0 },
+                    Arest { peso: 5, dcamin: 3 },
+                    Arest { peso: 4, dcamin: 7 },
+                    Arest { peso: 9, dcamin: 8 },
                 ],
                 grau: 4,
                 num_nome: 5,
                 cha_nome: 'F',
             },
-            Vertic { // 6 = G
+            Vertic { // C,E,H,J
                 arestu: vec![
-                    Arest { peso: 4, dcamin: 2 }, // G -> C
-                    Arest { peso: 2, dcamin: 4 }, // G -> E
-                    Arest { peso: 5, dcamin: 7 }, // G -> H
-                    Arest { peso: 7, dcamin: 9 }, // G -> J
+                    Arest { peso: 4, dcamin: 2 }, 
+                    Arest { peso: 8, dcamin: 4 }, 
+                    Arest { peso: 5, dcamin: 7 }, 
+                    Arest { peso: 7, dcamin: 9 }, 
                 ],
                 grau: 4,
                 num_nome: 6,
                 cha_nome: 'G',
             },
-            Vertic { // 7 = H
+            Vertic { // D,E,F,G
                 arestu: vec![
-                    Arest { peso: 5, dcamin: 3 }, // H -> D
-                    Arest { peso: 6, dcamin: 4 }, // H -> E
-                    Arest { peso: 4, dcamin: 5 }, // H -> F
-                    Arest { peso: 5, dcamin: 6 }, // H -> G
+                    Arest { peso: 5, dcamin: 3 }, 
+                    Arest { peso: 6, dcamin: 4 }, 
+                    Arest { peso: 4, dcamin: 5 }, 
+                    Arest { peso: 5, dcamin: 6 }, 
                 ],
                 grau: 4,
                 num_nome: 7,
                 cha_nome: 'H',
             },
-            Vertic { // 8 = I
+            Vertic { // A,B,F
                 arestu: vec![
-                    Arest { peso: 7, dcamin: 0 }, // I -> A
-                    Arest { peso: 5, dcamin: 1 }, // I -> B
-                    Arest { peso: 9, dcamin: 5 }, // I -> F
+                    Arest { peso: 7, dcamin: 0 },
+                    Arest { peso: 5, dcamin: 1 },
+                    Arest { peso: 8, dcamin: 5 }, 
                 ],
                 grau: 3,
                 num_nome: 8,
                 cha_nome: 'I',
             },
-            Vertic { // 9 = J
+            Vertic { // B,C,G
                 arestu: vec![
                     Arest { peso: 6, dcamin: 1 }, 
-                    Arest { peso: 8, dcamin: 2 }, 
+                    Arest { peso: 5, dcamin: 2 }, 
+                    Arest { peso: 4, dcamin: 6 }, 
+                    Arest { peso: 3, dcamin: 8 }, 
                     Arest { peso: 7, dcamin: 6 }, 
                 ],
-                grau: 3,
+                grau: 5,
                 num_nome: 9,
                 cha_nome: 'J',
             },
         ],
-    };
-
+    };//trecos que printam o grafo 
     ver_grap_bonitinho(&grafu);
 }
 //************************************************************************************
 #[allow(dead_code)]
-fn printar_grap_em_linha(grafu: &Grap) {
+fn printar_grap_em_linha(grafu: &Grap) {//isso aq foi 100% o luiz
     for vertice in &grafu.verticu {
         println!("\nVertice: {}", vertice.cha_nome);
         for aresta in &vertice.arestu {
@@ -687,7 +690,7 @@ fn printar_grap_em_linha(grafu: &Grap) {
     }
 }
 //************************************************************************************
-fn ver_grap_bonitinho(grafo: &Grap) -> eframe::Result {
+fn ver_grap_bonitinho(grafo: &Grap) -> eframe::Result {//isso aq foi 100% o Agy tá bom 
     let opcoes = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([820.0, 620.0])
