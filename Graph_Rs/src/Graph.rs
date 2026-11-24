@@ -1,27 +1,26 @@
 use std::cmp::Reverse;
 use std::collections::BinaryHeap;
 use eframe::egui;
-
-#[derive(Clone, Debug)]
+//************************************************************************************
+#[derive(Clone, Debug)]//pq é tão divertidinho programar nessa linguagem 
 struct Arest {
     peso: u32,
     dcamin: usize,
 }
-
+//************************************************************************************
 #[allow(dead_code)]
-#[derive(Clone, Debug)]
-struct Vertic {
+#[derive(Clone, Debug)]// vertices para coisar aaaa
+struct Vertic { //será que eu consigo usar rust para programar arduino 
     arestu: Vec<Arest>,
     grau: u32,
     num_nome: u32,
     cha_nome: char,
 }
-
+//************************************************************************************
 #[derive(Clone, Debug)]
-struct Grap {
+struct Grap {  // a esse ponto meus comentários são mais devaneios doq qualquer coisa 
     verticu: Vec<Vertic>,
 }
-
 //************************************************************************************
 // Estrutura com os resultados calculados pelo Algoritmo de Dijkstra
 //************************************************************************************
@@ -38,7 +37,8 @@ struct ResultadoDijkstra {
     custo_total: Option<u32>,
 }
 
-// Algoritmo de Dijkstra
+// Isso TEORICAMENTE serve para fazer o dijkstra, foi o Agy q inscreveu ent tô meio assim
+// tô quase apagando o treco para escrever mim mesmo 
 fn calcular_dijkstra(grafu: &Grap, origem: usize, destino: usize) -> ResultadoDijkstra {
     let n = grafu.verticu.len();
     if origem >= n {
@@ -126,7 +126,7 @@ fn calcular_dijkstra(grafu: &Grap, origem: usize, destino: usize) -> ResultadoDi
         custo_total,
     }
 }
-
+//************************************************************************************
 // Retorna o subgrafo construído pelo Dijkstra
 #[allow(dead_code)]
 fn subgrafo_dijk(grafu: &Grap, origem: usize, destino: usize) -> Grap {
@@ -161,7 +161,6 @@ fn caminho_dijk(grafu: &Grap, origem: usize, destino: usize) -> Vec<usize> {
     let res = calcular_dijkstra(grafu, origem, destino);
     res.caminho
 }
-
 //************************************************************************************
 // Interface Gráfica com egui / eframe
 //************************************************************************************
@@ -174,16 +173,21 @@ struct Aplicacao {
     resultado_dijkstra: Option<ResultadoDijkstra>,
     mostrar_subgrafo_completo: bool,
 }
-
-impl Aplicacao {
+//************************************************************************************
+impl Aplicacao {//olhar linha 555 instruções sobre as  vertices 
     fn new(grafo: Grap) -> Self {
         let n = grafo.verticu.len();
         let mut posicoes = vec![
-            egui::pos2(160.0, 180.0), // A
-            egui::pos2(380.0, 110.0), // B
-            egui::pos2(600.0, 180.0), // C
-            egui::pos2(260.0, 400.0), // D
-            egui::pos2(520.0, 400.0), // E
+            egui::pos2(160.0, 180.0), // A (0)
+            egui::pos2(380.0, 110.0), // B (1)
+            egui::pos2(600.0, 180.0), // C (2)
+            egui::pos2(260.0, 400.0), // D (3)
+            egui::pos2(520.0, 400.0), // E (4)
+            egui::pos2( 80.0, 340.0), // F (5)
+            egui::pos2(700.0, 340.0), // G (6)
+            egui::pos2(380.0, 520.0), // H (7)
+            egui::pos2(160.0,  50.0), // I (8)
+            egui::pos2(680.0,  50.0), // J (9)
         ];
 
         while posicoes.len() < n {
@@ -202,7 +206,7 @@ impl Aplicacao {
         }
     }
 }
-
+//************************************************************************************
 impl eframe::App for Aplicacao {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let n = self.grafo.verticu.len();
@@ -241,7 +245,7 @@ impl eframe::App for Aplicacao {
 
             // Botão Principal: Calcular Caminho
             let btn_calc = egui::Button::new(
-                egui::RichText::new("⚡ Calcular Caminho")
+                egui::RichText::new(" 📍 Calcular Caminho")
                     .color(egui::Color32::BLACK)
                     .strong(),
             )
@@ -264,12 +268,17 @@ impl eframe::App for Aplicacao {
 
             ui.separator();
             if ui.button("↺ Resetar Nós").clicked() {
-                self.posicoes = vec![
-                    egui::pos2(160.0, 180.0),
-                    egui::pos2(380.0, 110.0),
-                    egui::pos2(600.0, 180.0),
-                    egui::pos2(260.0, 400.0),
-                    egui::pos2(520.0, 400.0),
+                self.posicoes = vec![ //para adicionar coisas ver linha 555 
+                    egui::pos2(160.0, 180.0), // A (0)
+                    egui::pos2(380.0, 110.0), // B (1)
+                    egui::pos2(600.0, 180.0), // C (2)
+                    egui::pos2(260.0, 400.0), // D (3)
+                    egui::pos2(520.0, 400.0), // E (4)
+                    egui::pos2( 80.0, 340.0), // F (5)
+                    egui::pos2(700.0, 340.0), // G (6)
+                    egui::pos2(380.0, 520.0), // H (7)
+                    egui::pos2(160.0,  50.0), // I (8)
+                    egui::pos2(680.0,  50.0), // J (9)
                 ];
             }
         });
@@ -533,7 +542,7 @@ impl eframe::App for Aplicacao {
         }
     }
 }
-
+//************************************************************************************
 // Função auxiliar para verificar existência de aresta
 fn vertice_tem_aresta(grafo: &Grap, de: usize, para: usize) -> bool {
     if let Some(v) = grafo.verticu.get(de) {
@@ -542,71 +551,136 @@ fn vertice_tem_aresta(grafo: &Grap, de: usize, para: usize) -> bool {
         false
     }
 }
-
 //************************************************************************************
-fn main() -> eframe::Result {
-    println!("\nIniciando Visualizador de Grafos com Dijkstra...");
-
-    let grafu = Grap {
+fn main(){//o claude mexeu e tirou meu lindos comentários, minhas palavras de voltamra agora que estou revisando código 
+            //daq pra baixo a magia acontece
+    println!("\ntá compilando caralhooo!!!");
+/*  ó para adicionar mais vertices tem que mudar as coisaa 
+    na linha 177 e 270 lembrar de atualizar ou mandar o agy atualizar
+*/
+    let grafu = Grap {//A0,B1,C2,D3,E4,F5,G6,H7,I8,J9,
         verticu: vec![
-            Vertic {
+            Vertic { //B, C, F, I
                 arestu: vec![
-                    Arest { peso: 4, dcamin: 1 },
-                    Arest { peso: 3, dcamin: 2 },
+                    Arest { peso: 4, dcamin: 1 }, 
+                    Arest { peso: 5, dcamin: 2 }, 
+                    Arest { peso: 6, dcamin: 5 }, 
+                    Arest { peso: 7, dcamin: 8 }, 
                 ],
-                grau: 2,
+                grau: 4,
                 num_nome: 0,
                 cha_nome: 'A',
             },
-            Vertic {
+            Vertic { // A,C,D,I,J
                 arestu: vec![
-                    Arest { peso: 4, dcamin: 0 },
-                    Arest { peso: 5, dcamin: 2 },
-                    Arest { peso: 2, dcamin: 3 },
+                    Arest { peso: 4, dcamin: 0 }, 
+                    Arest { peso: 7, dcamin: 2 }, 
+                    Arest { peso: 3, dcamin: 3 }, 
+                    Arest { peso: 5, dcamin: 8 }, 
+                    Arest { peso: 6, dcamin: 9 }, 
                 ],
-                grau: 3,
+                grau: 5,
                 num_nome: 1,
                 cha_nome: 'B',
             },
-            Vertic {
+            Vertic { // A,B,D,E,G,J
                 arestu: vec![
                     Arest { peso: 3, dcamin: 0 },
                     Arest { peso: 5, dcamin: 1 },
-                    Arest { peso: 1, dcamin: 3 },
+                    Arest { peso: 6, dcamin: 3 },
                     Arest { peso: 3, dcamin: 4 },
+                    Arest { peso: 4, dcamin: 6 },
+                    Arest { peso: 8, dcamin: 9 },
                 ],
-                grau: 4,
+                grau: 6,
                 num_nome: 2,
                 cha_nome: 'C',
             },
-            Vertic {
+            Vertic { // B,C,E,F,H 
                 arestu: vec![
                     Arest { peso: 2, dcamin: 1 },
-                    Arest { peso: 1, dcamin: 2 },
+                    Arest { peso: 5, dcamin: 2 },
                     Arest { peso: 4, dcamin: 4 },
+                    Arest { peso: 3, dcamin: 5 },
+                    Arest { peso: 5, dcamin: 7 },
                 ],
-                grau: 3,
+                grau: 5,
                 num_nome: 3,
                 cha_nome: 'D',
             },
-            Vertic {
+            Vertic { //C,D,G,H
                 arestu: vec![
-                    Arest { peso: 3, dcamin: 2 },
-                    Arest { peso: 4, dcamin: 3 },
+                    Arest { peso: 3, dcamin: 2 }, 
+                    Arest { peso: 4, dcamin: 3 }, 
+                    Arest { peso: 5, dcamin: 6 }, 
+                    Arest { peso: 6, dcamin: 7 }, 
                 ],
-                grau: 2,
+                grau: 4,
                 num_nome: 4,
                 cha_nome: 'E',
             },
+            Vertic { // A, D, H, I
+                arestu: vec![
+                    Arest { peso: 6, dcamin: 0 },
+                    Arest { peso: 5, dcamin: 3 },
+                    Arest { peso: 4, dcamin: 7 },
+                    Arest { peso: 9, dcamin: 8 },
+                ],
+                grau: 4,
+                num_nome: 5,
+                cha_nome: 'F',
+            },
+            Vertic { // C,E,H,J
+                arestu: vec![
+                    Arest { peso: 4, dcamin: 2 }, 
+                    Arest { peso: 8, dcamin: 4 }, 
+                    Arest { peso: 5, dcamin: 7 }, 
+                    Arest { peso: 7, dcamin: 9 }, 
+                ],
+                grau: 4,
+                num_nome: 6,
+                cha_nome: 'G',
+            },
+            Vertic { // D,E,F,G
+                arestu: vec![
+                    Arest { peso: 5, dcamin: 3 }, 
+                    Arest { peso: 6, dcamin: 4 }, 
+                    Arest { peso: 4, dcamin: 5 }, 
+                    Arest { peso: 5, dcamin: 6 }, 
+                ],
+                grau: 4,
+                num_nome: 7,
+                cha_nome: 'H',
+            },
+            Vertic { // A,B,F
+                arestu: vec![
+                    Arest { peso: 7, dcamin: 0 },
+                    Arest { peso: 5, dcamin: 1 },
+                    Arest { peso: 8, dcamin: 5 }, 
+                ],
+                grau: 3,
+                num_nome: 8,
+                cha_nome: 'I',
+            },
+            Vertic { // B,C,G
+                arestu: vec![
+                    Arest { peso: 6, dcamin: 1 }, 
+                    Arest { peso: 5, dcamin: 2 }, 
+                    Arest { peso: 4, dcamin: 6 }, 
+                    Arest { peso: 3, dcamin: 8 }, 
+                    Arest { peso: 7, dcamin: 6 }, 
+                ],
+                grau: 5,
+                num_nome: 9,
+                cha_nome: 'J',
+            },
         ],
-    };
-
-    ver_grap_bonitinho(&grafu)
+    };//trecos que printam o grafo 
+    ver_grap_bonitinho(&grafu);
 }
-
 //************************************************************************************
 #[allow(dead_code)]
-fn printar_grap_em_linha(grafu: &Grap) {
+fn printar_grap_em_linha(grafu: &Grap) {//isso aq foi 100% o luiz
     for vertice in &grafu.verticu {
         println!("\nVertice: {}", vertice.cha_nome);
         for aresta in &vertice.arestu {
@@ -615,9 +689,8 @@ fn printar_grap_em_linha(grafu: &Grap) {
         }
     }
 }
-
 //************************************************************************************
-fn ver_grap_bonitinho(grafo: &Grap) -> eframe::Result {
+fn ver_grap_bonitinho(grafo: &Grap) -> eframe::Result {//isso aq foi 100% o Agy tá bom 
     let opcoes = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([820.0, 620.0])
@@ -625,7 +698,6 @@ fn ver_grap_bonitinho(grafo: &Grap) -> eframe::Result {
             .with_title("Visualizador de Grafos - Algoritmo de Dijkstra"),
         ..Default::default()
     };
-
     eframe::run_native(
         "Visualizador de Grafos",
         opcoes,
