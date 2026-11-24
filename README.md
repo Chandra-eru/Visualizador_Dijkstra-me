@@ -75,5 +75,6 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 - **Clique e arraste em um nó**: Move o vértice pela janela.
 - **Barra Superior**:
   - Selecione a **Origem** clicando na letra correspondente.
+  (sim o README, foi escrito por IA, não tava com nenhum saco de escrever isso aq)
   - Selecione o **Destino** clicando na letra correspondente.
   - Clique em **Resetar Layout** para redefinir as coordenadas iniciais dos nós.
